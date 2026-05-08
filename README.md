@@ -1,6 +1,6 @@
-# PentAI — Building the future of offensive security with AI 🇲🇦
+## Building the future of offensive security with AI 🇲🇦
 
-AI-Powered Security Automation Platform Designed to Streamline Reconnaissance, Vulnerability Discovery, Pentesting Operations, and Offensive Security Workflows for Ethical Hackers, Red Teamers, Security Researchers, and Bug Bounty Hunters through Intelligent Local AI Agents and Automated Cybersecurity Analysis.
+PentAI - AI-Powered Security Automation Platform Designed to Streamline Reconnaissance, Vulnerability Discovery, Pentesting Operations, and Offensive Security Workflows for Ethical Hackers, Red Teamers, Security Researchers, and Bug Bounty Hunters through Intelligent Local AI Agents and Automated Cybersecurity Analysis.
 
 ---
 
