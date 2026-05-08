@@ -29,22 +29,23 @@ Open: **http://localhost:5000**
 - JS & Secret Hunting (trufflehog, gitleaks, bfac)
 
 ###  Vulnerability Testing
-- XSS — Cross-Site Scripting
-- SQLi — SQL Injection
-- LFI / Path Traversal
-- SSRF — Server-Side Request Forgery
-- SSTI — Server-Side Template Injection
-- CORS Misconfiguration
-- CSRF
+- XSS :  Cross-Site Scripting
+- SQLi :  SQL Injection
+- LFI :  Path Traversal
+- SSRF :  Server-Side Request Forgery
+- SSTI :  Server-Side Template Injection
+- CORS (Cross-Origin Resource Sharing) Misconfiguration
+- CSRF : Cross-Site Request Forgery
 - Open Redirect
-- RCE / Command Injection
+- RCE : Remote Code Execution 
+- Command Injection
 - Nuclei Full Scan (CVEs, Exposures, Misconfigs)
 
-###  AI Agent (Local — 100% Free)
+###  AI Agent 
 - Powered by Ollama 
 - Analyze scan output and detect vulnerabilities automatically
-- Generate full recon plans for any target
-- Write professional bug bounty reports
+- Generate full recon plans 
+- Write professional Security reports
 - Works completely offline after first model download
 
 ---
