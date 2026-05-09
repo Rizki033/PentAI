@@ -1,3 +1,5 @@
+example.com
+www.example.com
 www.example.com
 example.com
 example.com
@@ -20,4 +22,3 @@ www.example.com
 as207960 test intermediate - example.com
 example.com
 user@example.com
-[+] Assetfinder done

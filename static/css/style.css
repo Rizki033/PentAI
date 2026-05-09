@@ -11,9 +11,9 @@ html { font-size: 16px; scroll-behavior: smooth; }
   --bg-glass-active: rgba(30, 30, 45, 0.7);
   
   /* Cyberpunk Accents */
-  --neon-cyan: #00f0ff;
-  --neon-cyan-glow: rgba(0, 240, 255, 0.4);
-  --neon-cyan-dim: rgba(0, 240, 255, 0.1);
+  --neon-cyan: #00bfff;
+  --neon-cyan-glow: rgba(0, 191, 255, 0.4);
+  --neon-cyan-dim: rgba(0, 191, 255, 0.1);
   
   --neon-purple: #b026ff;
   --neon-purple-glow: rgba(176, 38, 255, 0.4);
