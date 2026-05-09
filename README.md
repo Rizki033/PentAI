@@ -4,6 +4,7 @@
 PentAI is an AI-powered security automation platform for reconnaissance, vulnerability discovery, pentesting operations, and offensive security workflows. It combines a local Flask dashboard, common security tooling, and Ollama-based AI analysis to help ethical hackers, red teamers, security researchers, and bug bounty hunters work faster.
 
 ![PentAI Terminal](assets/images/Terminal.png)
+![PentAI Web](assets/images/web_1.png)
 
 ---
 
