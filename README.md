@@ -2,6 +2,8 @@
 
 PentAI - AI-Powered Security Automation Platform Designed to Streamline Reconnaissance, Vulnerability Discovery, Pentesting Operations, and Offensive Security Workflows for Ethical Hackers, Red Teamers, Security Researchers, and Bug Bounty Hunters through Intelligent Local AI Agents and Automated Cybersecurity Analysis.
 
+![PentAI Terminal](assets/images/Terminal.png)
+
 ---
 
 ##  Quick Start
