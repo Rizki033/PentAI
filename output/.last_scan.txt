@@ -1,0 +1,1 @@
+[ERR] gf not installed. Install: sudo apt install gf OR go install github.com/projectdiscovery/gf/v2/cmd/gf@latest
