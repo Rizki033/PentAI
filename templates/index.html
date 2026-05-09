@@ -1,179 +1,286 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PentAI</title>
-<link rel="stylesheet" href="/static/css/style.css">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PentAI - Premium</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
 </head>
+
 <body>
-<div id="app">
-
-  <!-- HEADER -->
-  <header class="header">
-    <div class="logo-mark">PentAI</div>
-    <div class="logo-info">
-      <div class="logo-text">PentAI <span class="ai-badge">AI</span></div>
-      <div class="logo-sub">Automating Pentesting and Hacking </div>
-    </div>
-    <div class="header-right">
-      <div class="stats-row">
-        <div class="stat-pill"><span class="sp-num" id="s-subs">0</span><span class="sp-lbl">SUBS</span></div>
-        <div class="stat-pill"><span class="sp-num" id="s-alive">0</span><span class="sp-lbl">ALIVE</span></div>
-        <div class="stat-pill"><span class="sp-num" id="s-urls">0</span><span class="sp-lbl">URLS</span></div>
-        <div class="stat-pill vuln"><span class="sp-num" id="s-vulns">0</span><span class="sp-lbl">VULNS</span></div>
-      </div>
-      <div class="ollama-status" id="ollama-status">
-        <span class="o-dot offline" id="o-dot"></span>
-        <span id="o-label">OLLAMA OFFLINE</span>
-      </div>
-      <button class="btn btn-ai" onclick="toggleSettings()">⚙ OLLAMA</button>
-    </div>
-  </header>
-
-  <!-- OLLAMA SETTINGS PANEL -->
-  <div id="settings-panel" class="settings-panel" style="display:none">
-    <div class="settings-grid">
-      <div class="setting-group">
-        <label class="s-label">MODEL</label>
-        <select id="model-select" class="s-select">
-          <option value="mistral">mistral (recommended)</option>
-          <option value="llama3.2">llama3.2</option>
-          <option value="llama3.1">llama3.1</option>
-          <option value="gemma2">gemma2</option>
-          <option value="phi3">phi3 (fast, small)</option>
-          <option value="qwen2.5">qwen2.5</option>
-          <option value="codellama">codellama</option>
-        </select>
-      </div>
-      <div class="setting-group">
-        <label class="s-label">OLLAMA HOST</label>
-        <input type="text" id="ollama-host" class="s-input" value="http://localhost:11434" placeholder="http://localhost:11434">
-      </div>
-      <div class="setting-group setting-actions">
-        <button class="btn btn-ai" onclick="saveSettings()">SAVE</button>
-        <button class="btn btn-run" onclick="testOllama()">TEST</button>
-        <button class="btn btn-dim" onclick="pullModel()">PULL MODEL</button>
-        <span id="test-result" class="test-result"></span>
-      </div>
-    </div>
-    <div class="settings-note">
-      🤖 Ollama runs locally — <strong>free forever</strong>, no internet needed for AI.
-      Install: <code>curl -fsSL https://ollama.com/install.sh | sh</code>
-      Then pull a model: <code>ollama pull mistral</code>
-    </div>
+  <!-- Premium Background Effects -->
+  <div class="bg-blobs">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="grid-overlay"></div>
   </div>
 
-  <div class="layout">
+  <div id="app">
 
-    <!-- SIDEBAR -->
-    <nav class="sidebar">
-      <div class="nav-group">
-        <div class="nav-label">// PHASE 1 — RECON</div>
-        <a class="nav-item active" data-tab="subdomain"><span class="nav-idx">[1]</span><span>Subdomain Enum</span><span class="nav-tip">Subs.txt</span></a>
-        <a class="nav-item" data-tab="alive"><span class="nav-idx">[2]</span><span>Alive Check</span><span class="nav-tip">Alive.txt</span></a>
-        <a class="nav-item" data-tab="url"><span class="nav-idx">[3]</span><span>URL Discovery</span><span class="nav-tip">URLs.txt</span></a>
-        <a class="nav-item" data-tab="dir"><span class="nav-idx">[4]</span><span>Dir Fuzzing</span><span class="nav-tip">dirs/</span></a>
-        <a class="nav-item" data-tab="ports"><span class="nav-idx">[5]</span><span>Port Scan</span><span class="nav-tip">ports.txt</span></a>
-        <a class="nav-item" data-tab="params"><span class="nav-idx">[6]</span><span>Param Discovery</span><span class="nav-tip">params/</span></a>
-        <a class="nav-item" data-tab="secrets"><span class="nav-idx">[7]</span><span>JS / Secrets</span><span class="nav-tip">secrets/</span></a>
-      </div>
-      <div class="nav-group">
-        <div class="nav-label">// PHASE 2 — EXPLOIT</div>
-        <a class="nav-item" data-tab="xss"><span class="nav-idx">[A]</span><span>XSS</span><span class="nav-tip vuln">HIGH</span></a>
-        <a class="nav-item" data-tab="sqli"><span class="nav-idx">[B]</span><span>SQLi</span><span class="nav-tip vuln">CRIT</span></a>
-        <a class="nav-item" data-tab="ssti"><span class="nav-idx">[C]</span><span>SSTI</span><span class="nav-tip vuln">CRIT</span></a>
-        <a class="nav-item" data-tab="lfi"><span class="nav-idx">[D]</span><span>LFI / Path Trav</span><span class="nav-tip vuln">HIGH</span></a>
-        <a class="nav-item" data-tab="ssrf"><span class="nav-idx">[E]</span><span>SSRF</span><span class="nav-tip vuln">CRIT</span></a>
-        <a class="nav-item" data-tab="cors"><span class="nav-idx">[F]</span><span>CORS</span><span class="nav-tip vuln">MED</span></a>
-        <a class="nav-item" data-tab="csrf"><span class="nav-idx">[G]</span><span>CSRF</span><span class="nav-tip vuln">MED</span></a>
-        <a class="nav-item" data-tab="redirect"><span class="nav-idx">[H]</span><span>Open Redirect</span><span class="nav-tip vuln">MED</span></a>
-        <a class="nav-item" data-tab="rce"><span class="nav-idx">[I]</span><span>RCE / CMDi</span><span class="nav-tip vuln">CRIT</span></a>
-      </div>
-      <div class="nav-group">
-        <div class="nav-label">// PHASE 3 — ADVANCED</div>
-        <a class="nav-item" data-tab="nuclei"><span class="nav-idx">[J]</span><span>Nuclei Full Scan</span><span class="nav-tip">CVE+MISC</span></a>
-        <a class="nav-item nav-ai" data-tab="agent"><span class="nav-idx ai">[🤖]</span><span>AI Agent</span><span class="nav-tip ai">LOCAL</span></a>
-        <a class="nav-item" data-tab="outputs"><span class="nav-idx">[★]</span><span>Output Files</span><span class="nav-tip">RESULTS</span></a>
-      </div>
-    </nav>
-
-    <!-- MAIN PANEL -->
-    <main class="panel">
-
-      <!-- TARGET BAR -->
-      <div class="target-bar">
-        <span class="target-label">TARGET://</span>
-        <input type="text" id="target" value="example.com" spellcheck="false" placeholder="target.com or IP">
-        <button class="btn btn-run" id="run-btn" onclick="runScan()">▶ RUN</button>
-        <button class="btn btn-clear" onclick="clearOutput()">✕</button>
-        <button class="btn btn-copy" onclick="copyCmd()">CMD</button>
-        <button class="btn btn-ai" onclick="agentAnalyze()">ANALYZE</button>
-      </div>
-
-      <!-- PANEL HEADER -->
-      <div class="panel-header">
-        <span class="panel-title" id="panel-title">SUBDOMAIN ENUMERATION</span>
-        <span class="panel-badge" id="panel-badge">PASSIVE + ACTIVE + BRUTEFORCE</span>
-        <span class="flow-hint" id="flow-hint">→ <code>output/Subs.txt</code></span>
-      </div>
-
-      <!-- TOOL GRID -->
-      <div class="tool-grid" id="tool-grid"></div>
-
-      <!-- OPTIONS -->
-      <div class="opts-row" id="opts-row"></div>
-
-      <!-- COMMAND PREVIEW -->
-      <div class="cmd-preview"><span class="prompt">$</span><span id="cmd-text">select a tool above...</span></div>
-
-      <!-- SPLIT: OUTPUT + AI -->
-      <div class="output-split">
-        <div class="output-area" id="output-area">
-          <div class="output-placeholder">// output streams here when you execute ▶</div>
+    <!-- HEADER -->
+    <header class="header">
+      <div class="logo-wrapper">
+        <div class="logo-mark">P</div>
+        <div class="logo-info">
+          <div class="logo-text">PentAI <span class="ai-badge">AI</span></div>
+          <div class="logo-sub">Advanced Offensive Security</div>
         </div>
-        <div class="ai-panel">
-          <div class="ai-panel-header">
-            <span>🤖</span>
-            <span>AI ANALYSIS — LOCAL OLLAMA</span>
-            <button class="btn btn-dim btn-xs" onclick="clearAI()">✕</button>
+      </div>
+
+      <div class="header-right">
+        <div class="stats-row">
+          <div class="stat-pill"><span class="sp-num" id="s-subs">0</span><span class="sp-lbl">SUBS</span></div>
+          <div class="stat-pill"><span class="sp-num" id="s-alive">0</span><span class="sp-lbl">ALIVE</span></div>
+          <div class="stat-pill"><span class="sp-num" id="s-urls">0</span><span class="sp-lbl">URLS</span></div>
+          <div class="stat-pill vuln"><span class="sp-num" id="s-vulns">0</span><span class="sp-lbl">VULNS</span></div>
+        </div>
+        <div class="header-divider"></div>
+        <div class="ollama-status" id="ollama-status">
+          <span class="o-dot offline" id="o-dot"></span>
+          <span id="o-label">OLLAMA OFFLINE</span>
+        </div>
+        <button class="btn btn-ai btn-glow" onclick="toggleSettings()">
+          <span class="btn-icon"></span> OLLAMA
+        </button>
+      </div>
+    </header>
+
+    <!-- OLLAMA SETTINGS PANEL -->
+    <div id="settings-panel" class="settings-panel glass-panel" style="display:none">
+      <div class="settings-grid">
+        <div class="setting-group">
+          <label class="s-label">AI MODEL</label>
+          <select id="model-select" class="s-select glass-input">
+            <option value="mistral">Mistral (Recommended)</option>
+            <option value="llama3.2">Llama 3.2</option>
+            <option value="llama3.1">Llama 3.1</option>
+            <option value="gemma2">Gemma 2</option>
+            <option value="phi3">Phi-3 (Fast)</option>
+            <option value="qwen2.5">Qwen 2.5</option>
+            <option value="codellama">CodeLlama</option>
+          </select>
+        </div>
+        <div class="setting-group">
+          <label class="s-label">OLLAMA HOST</label>
+          <input type="text" id="ollama-host" class="s-input glass-input" value="http://localhost:11434"
+            placeholder="http://localhost:11434">
+        </div>
+        <div class="setting-group setting-actions">
+          <button class="btn btn-primary" onclick="saveSettings()">SAVE</button>
+          <button class="btn btn-outline" onclick="testOllama()">TEST CONNECTION</button>
+          <button class="btn btn-dim" onclick="pullModel()">PULL MODEL</button>
+        </div>
+        <div class="setting-group" style="justify-content: flex-end; padding-bottom: 8px;">
+          <span id="test-result" class="test-result"></span>
+        </div>
+      </div>
+      <div class="settings-note">
+        <div class="note-icon">i</div>
+        <div class="note-text">
+          Ollama runs entirely locally. <strong>100% Free & Private.</strong><br>
+          Setup: <code>curl -fsSL https://ollama.com/install.sh | sh</code> then <code>ollama pull mistral</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="layout">
+
+      <!-- SIDEBAR -->
+      <nav class="sidebar glass-panel">
+        <div class="nav-group">
+          <div class="nav-label"><span class="nav-label-line"></span> PHASE 1 — RECON</div>
+          <a class="nav-item active" data-tab="subdomain">
+            <div class="nav-glow"></div><span class="nav-idx">01</span><span class="nav-text">Subdomain Enum</span><span
+              class="nav-tip">Subs.txt</span>
+          </a>
+          <a class="nav-item" data-tab="alive">
+            <div class="nav-glow"></div><span class="nav-idx">02</span><span class="nav-text">Alive Check</span><span
+              class="nav-tip">Alive.txt</span>
+          </a>
+          <a class="nav-item" data-tab="url">
+            <div class="nav-glow"></div><span class="nav-idx">03</span><span class="nav-text">URL Discovery</span><span
+              class="nav-tip">URLs.txt</span>
+          </a>
+          <a class="nav-item" data-tab="dir">
+            <div class="nav-glow"></div><span class="nav-idx">04</span><span class="nav-text">Dir Fuzzing</span><span
+              class="nav-tip">dirs/</span>
+          </a>
+          <a class="nav-item" data-tab="ports">
+            <div class="nav-glow"></div><span class="nav-idx">05</span><span class="nav-text">Port Scan</span><span
+              class="nav-tip">ports.txt</span>
+          </a>
+          <a class="nav-item" data-tab="params">
+            <div class="nav-glow"></div><span class="nav-idx">06</span><span class="nav-text">Param
+              Discovery</span><span class="nav-tip">params/</span>
+          </a>
+          <a class="nav-item" data-tab="secrets">
+            <div class="nav-glow"></div><span class="nav-idx">07</span><span class="nav-text">JS & Secrets</span><span
+              class="nav-tip">secrets/</span>
+          </a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label"><span class="nav-label-line"></span> PHASE 2 — EXPLOIT</div>
+          <a class="nav-item" data-tab="xss">
+            <div class="nav-glow"></div><span class="nav-idx">08</span><span class="nav-text">XSS Testing</span><span
+              class="nav-tip vuln">HIGH</span>
+          </a>
+          <a class="nav-item" data-tab="sqli">
+            <div class="nav-glow"></div><span class="nav-idx">09</span><span class="nav-text">SQL Injection</span><span
+              class="nav-tip vuln crit">CRIT</span>
+          </a>
+          <a class="nav-item" data-tab="ssti">
+            <div class="nav-glow"></div><span class="nav-idx">10</span><span class="nav-text">SSTI</span><span
+              class="nav-tip vuln crit">CRIT</span>
+          </a>
+          <a class="nav-item" data-tab="lfi">
+            <div class="nav-glow"></div><span class="nav-idx">11</span><span class="nav-text">LFI /
+              Traversal</span><span class="nav-tip vuln">HIGH</span>
+          </a>
+          <a class="nav-item" data-tab="ssrf">
+            <div class="nav-glow"></div><span class="nav-idx">12</span><span class="nav-text">SSRF</span><span
+              class="nav-tip vuln crit">CRIT</span>
+          </a>
+          <a class="nav-item" data-tab="cors">
+            <div class="nav-glow"></div><span class="nav-idx">13</span><span class="nav-text">CORS</span><span
+              class="nav-tip vuln med">MED</span>
+          </a>
+          <a class="nav-item" data-tab="csrf">
+            <div class="nav-glow"></div><span class="nav-idx">14</span><span class="nav-text">CSRF</span><span
+              class="nav-tip vuln med">MED</span>
+          </a>
+          <a class="nav-item" data-tab="redirect">
+            <div class="nav-glow"></div><span class="nav-idx">15</span><span class="nav-text">Open Redirect</span><span
+              class="nav-tip vuln med">MED</span>
+          </a>
+          <a class="nav-item" data-tab="rce">
+            <div class="nav-glow"></div><span class="nav-idx">16</span><span class="nav-text">RCE / CMDi</span><span
+              class="nav-tip vuln crit">CRIT</span>
+          </a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label"><span class="nav-label-line"></span> PHASE 3 — ADVANCED</div>
+          <a class="nav-item" data-tab="nuclei">
+            <div class="nav-glow"></div><span class="nav-idx">17</span><span class="nav-text">Nuclei Full
+              Scan</span><span class="nav-tip">CVEs</span>
+          </a>
+          <a class="nav-item nav-ai" data-tab="agent">
+            <div class="nav-glow"></div><span class="nav-idx ai"></span><span class="nav-text">AI Agent</span><span
+              class="nav-tip ai">LOCAL</span>
+          </a>
+          <a class="nav-item" data-tab="outputs">
+            <div class="nav-glow"></div><span class="nav-idx out"></span><span class="nav-text">Output
+              Files</span><span class="nav-tip">FILES</span>
+          </a>
+        </div>
+      </nav>
+
+      <!-- MAIN PANEL -->
+      <main class="panel">
+
+        <!-- TARGET BAR -->
+        <div class="target-bar glass-panel">
+          <div class="target-input-wrapper">
+            <span class="target-label">TARGET://</span>
+            <input type="text" id="target" value="example.com" spellcheck="false" placeholder="target.com or IP">
           </div>
-          <div class="ai-output" id="ai-output">
-            <div class="ai-placeholder">
-              Click <strong>ANALYZE</strong> after a scan for AI-powered analysis.<br><br>
-              <strong>100% local</strong> — uses Ollama running on your machine.<br>
-              No API key · No internet · No cost · No limits<br><br>
-              Setup: ⚙ OLLAMA → select model → TEST
+          <div class="target-actions">
+            <button class="btn btn-copy" onclick="copyCmd()">COPY CMD</button>
+            <button class="btn btn-clear" onclick="clearOutput()">CLEAR</button>
+            <button class="btn btn-ai btn-glow-purple" onclick="agentAnalyze()">AI ANALYZE</button>
+            <button class="btn btn-run btn-glow-cyan" id="run-btn" onclick="runScan()">EXECUTE</button>
+          </div>
+        </div>
+
+        <!-- PANEL HEADER -->
+        <div class="panel-header">
+          <div class="ph-left">
+            <h2 class="panel-title" id="panel-title">SUBDOMAIN ENUMERATION</h2>
+            <span class="panel-badge" id="panel-badge">PASSIVE + ACTIVE + BRUTEFORCE</span>
+          </div>
+          <div class="flow-hint" id="flow-hint">→ <code>output/Subs.txt</code></div>
+        </div>
+
+        <!-- TOOL GRID -->
+        <div class="tool-grid" id="tool-grid"></div>
+
+        <!-- OPTIONS -->
+        <div class="opts-row" id="opts-row"></div>
+
+        <!-- COMMAND PREVIEW -->
+        <div class="cmd-preview glass-panel">
+          <div class="cmd-header">
+            <span class="cmd-dot r"></span><span class="cmd-dot y"></span><span class="cmd-dot g"></span>
+            <span class="cmd-title">bash -c</span>
+          </div>
+          <div class="cmd-body">
+            <span class="prompt">></span><span id="cmd-text">select a tool above...</span>
+          </div>
+        </div>
+
+        <!-- PROGRESS -->
+        <div class="progress-wrap glass-panel" id="progress-wrap" style="display:none">
+          <div class="progress-info">
+            <span class="progress-label" id="progress-label">Executing...</span>
+            <span class="progress-spinner"></span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+        </div>
+
+        <!-- SPLIT: OUTPUT + AI -->
+        <div class="output-split">
+          <div class="output-area glass-panel" id="output-area">
+            <div class="output-placeholder">
+              <div class="op-icon"></div>
+              <div class="op-text">Ready for execution.<br>Select a tool and press EXECUTE.</div>
+            </div>
+          </div>
+
+          <div class="ai-panel glass-panel">
+            <div class="ai-panel-header">
+              <div class="ai-title">
+                <span class="ai-icon"></span>
+                <span>AI ANALYSIS</span>
+              </div>
+              <button class="btn-icon-only" onclick="clearAI()" title="Clear">X</button>
+            </div>
+            <div class="ai-output" id="ai-output">
+              <div class="ai-placeholder">
+                <div class="ai-ph-icon">🧠</div>
+                <div class="ai-ph-text">
+                  Run a scan, then click <strong>AI ANALYZE</strong> to uncover hidden vulnerabilities.<br><br>
+                  Powered by 100% Local AI. No API limits, completely private.
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- PROGRESS -->
-      <div class="progress-wrap" id="progress-wrap" style="display:none">
-        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-        <span class="progress-label" id="progress-label">Running...</span>
-      </div>
-
-    </main>
-  </div>
-
-  <!-- OUTPUTS MODAL -->
-  <div class="modal-bg" id="modal-bg" style="display:none" onclick="closeModal()">
-    <div class="modal" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <span>OUTPUT FILES</span>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-ai btn-xs" onclick="generateReport()"> AI REPORT</button>
-          <button class="btn btn-clear btn-xs" onclick="closeModal()">✕</button>
-        </div>
-      </div>
-      <div id="modal-body"></div>
+      </main>
     </div>
-  </div>
 
-</div>
-<script src="/static/js/main.js"></script>
+    <!-- OUTPUTS MODAL -->
+    <div class="modal-bg" id="modal-bg" style="display:none" onclick="closeModal()">
+      <div class="modal glass-panel" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <div class="mh-title"><span class="mh-icon"></span> OUTPUT FILES</div>
+          <div class="mh-actions">
+            <button class="btn btn-ai btn-glow-purple" onclick="generateReport()">AI REPORT</button>
+            <button class="btn-icon-only" onclick="closeModal()">X</button>
+          </div>
+        </div>
+        <div id="modal-body" class="modal-body custom-scrollbar"></div>
+      </div>
+    </div>
+
+  </div>
+  <script src="/static/js/main.js"></script>
 </body>
+
 </html>
