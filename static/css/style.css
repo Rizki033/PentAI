@@ -116,16 +116,16 @@ body {
 .logo-wrapper { display: flex; align-items: center; gap: 1rem; }
 .logo-mark {
   width: 42px; height: 42px;
-  background: var(--grad-primary);
+  background: linear-gradient(135deg, #22c55e, #00ff66);
   border-radius: var(--r-md);
   display: flex; align-items: center; justify-content: center;
   font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 800; color: #fff;
-  box-shadow: 0 0 20px var(--neon-cyan-glow);
+  box-shadow: 0 0 20px var(--neon-green-glow);
   animation: logoPulse 4s infinite alternate;
 }
 @keyframes logoPulse {
-  0% { box-shadow: 0 0 15px var(--neon-cyan-glow); }
-  100% { box-shadow: 0 0 30px var(--neon-purple-glow); }
+  0% { box-shadow: 0 0 15px var(--neon-green-glow); }
+  100% { box-shadow: 0 0 30px rgba(34, 197, 94, 0.55); }
 }
 
 .logo-info { display: flex; flex-direction: column; }
@@ -136,9 +136,9 @@ body {
   display: flex; align-items: center; gap: 8px; line-height: 1.1;
 }
 .ai-badge {
-  font-size: 10px; font-weight: 700; background: var(--grad-primary);
+  font-size: 10px; font-weight: 700; background: linear-gradient(135deg, #16a34a, #00ff66);
   padding: 2px 8px; border-radius: var(--r-sm); letter-spacing: 1px;
-  -webkit-text-fill-color: #fff; box-shadow: 0 0 10px var(--neon-purple-glow);
+  -webkit-text-fill-color: #fff; box-shadow: 0 0 10px var(--neon-green-glow);
 }
 .logo-sub { font-size: 11px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
 
