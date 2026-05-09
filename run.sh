@@ -157,4 +157,4 @@ echo -e "${CYN}  Results saved to: ./output/${NC}"
 echo -e "${YLW}  Press Ctrl+C to stop${NC}"
 echo ""
 
-python3 app.py
+python3 main.py
