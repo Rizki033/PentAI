@@ -22,3 +22,5 @@ www.example.com
 as207960 test intermediate - example.com
 example.com
 user@example.com
+bookstore.perfai.co
+bookstore.perfai.co
