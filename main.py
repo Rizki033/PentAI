@@ -3,6 +3,15 @@ from datetime import datetime
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 import urllib.request, urllib.error
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(BASE_DIR)
+
+OUTPUT_DIR = os.path.join(BASE_DIR, "output")
+DEFAULT_OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+DEFAULT_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
+APP_HOST = os.getenv("HOST", "0.0.0.0")
+APP_PORT = int(os.getenv("PORT", "5000"))
+
 app = Flask(__name__)
 
 #=================================================================================
@@ -33,7 +42,7 @@ AGENT_SYSTEM = """You are PentAI , an expert bug bounty AI agent. Your role:
 4. Write PoC curl commands for confirmed findings
 5. Be specific, technical, and actionable."""
 
-def ollama_chat(prompt, model="mistral", host="http://localhost:11434"):
+def ollama_chat(prompt, model=DEFAULT_OLLAMA_MODEL, host=DEFAULT_OLLAMA_HOST):
     payload = json.dumps({"model":model,"stream":False,
         "messages":[{"role":"system","content":AGENT_SYSTEM},
                     {"role":"user","content":prompt}]}).encode()
@@ -47,7 +56,7 @@ def ollama_chat(prompt, model="mistral", host="http://localhost:11434"):
     except Exception as e:
         return None, str(e)
 
-def ollama_models(host="http://localhost:11434"):
+def ollama_models(host=DEFAULT_OLLAMA_HOST):
     try:
         with urllib.request.urlopen(f"{host}/api/tags", timeout=5) as r:
             return [m["name"] for m in json.loads(r.read().decode()).get("models",[])]
@@ -60,7 +69,7 @@ def ollama_models(host="http://localhost:11434"):
 def build_command(module, tool, target, options=None):
     t = target.strip() or "example.com"
     o = options or {}
-    os.makedirs("output", exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     WL_DNS   = "/usr/share/wordlists/seclists/Discovery/DNS/bitquark-subdomains-top100000.txt"
     WL_DNS1M = "/usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt"
@@ -413,9 +422,17 @@ def api_tools(): return jsonify(check_tools())
 
 @app.route("/api/models")
 def api_models():
-    host   = request.args.get("host","http://localhost:11434")
+    host   = request.args.get("host", DEFAULT_OLLAMA_HOST)
     models = ollama_models(host)
     return jsonify({"models":models,"running":len(models)>0})
+
+@app.route("/api/health")
+def api_health():
+    return jsonify({
+        "status": "ok",
+        "output_dir": OUTPUT_DIR,
+        "ollama_host": DEFAULT_OLLAMA_HOST
+    })
 
 @app.route("/api/command", methods=["POST"])
 def api_command():
@@ -429,7 +446,7 @@ def api_run():
     d   = request.json
     cmd = build_command(d.get("module"), d.get("tool"),
                         d.get("target","localhost"), d.get("options",{}))
-    os.makedirs("output", exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     def generate():
         yield f"data: {json.dumps({'type':'cmd','text':cmd})}\n\n"
@@ -451,7 +468,7 @@ def api_run():
                 elif any(x in low for x in ["[*]","alive","open","running","done"]): tag="info"
                 yield f"data: {json.dumps({'type':'line','tag':tag,'text':line,'ts':datetime.now().strftime('%H:%M:%S')})}\n\n"
             proc.wait()
-            with open("output/.last_scan.txt","w") as f:
+            with open(os.path.join(OUTPUT_DIR, ".last_scan.txt"),"w") as f:
                 f.write("\n".join(lines[-500:]))
             yield f"data: {json.dumps({'type':'done','code':proc.returncode,'lines':len(lines)})}\n\n"
         except Exception as e:
@@ -466,20 +483,20 @@ def api_agent_analyze():
     d = request.json
     scan_data = ""
     try:
-        with open("output/.last_scan.txt") as f: scan_data = f.read()
+        with open(os.path.join(OUTPUT_DIR, ".last_scan.txt")) as f: scan_data = f.read()
     except:
-        if os.path.isdir("output"):
-            for fn in os.listdir("output"):
+        if os.path.isdir(OUTPUT_DIR):
+            for fn in os.listdir(OUTPUT_DIR):
                 if fn.startswith("."): continue
                 try:
-                    with open(f"output/{fn}") as f:
+                    with open(os.path.join(OUTPUT_DIR, fn)) as f:
                         scan_data += f"\n=== {fn} ===\n" + f.read(2000)
                 except: pass
     prompt = (f"Target: {d.get('target','')}\nModule: {d.get('module','')}\n"
               f"Scan output:\n{scan_data[-4000:]}\n\n"
               "Analyze for vulnerabilities, rate severity [CRITICAL/HIGH/MEDIUM/LOW], "
               "suggest 3 next commands.")
-    result, err = ollama_chat(prompt, d.get("model","mistral"), d.get("host","http://localhost:11434"))
+    result, err = ollama_chat(prompt, d.get("model", DEFAULT_OLLAMA_MODEL), d.get("host", DEFAULT_OLLAMA_HOST))
     return jsonify({"result": result or f"[Error] {err}"})
 
 @app.route("/api/agent/plan", methods=["POST"])
@@ -488,42 +505,42 @@ def api_agent_plan():
     prompt = (f"Target: {d.get('target','')}\n\n"
               "Create a complete bug bounty recon+exploit plan: exact step order, "
               "likely vuln classes, key output files to review.")
-    result, err = ollama_chat(prompt, d.get("model","mistral"), d.get("host","http://localhost:11434"))
+    result, err = ollama_chat(prompt, d.get("model", DEFAULT_OLLAMA_MODEL), d.get("host", DEFAULT_OLLAMA_HOST))
     return jsonify({"result": result or f"[Error] {err}"})
 
 @app.route("/api/agent/report", methods=["POST"])
 def api_agent_report():
     d = request.json
     summary = ""
-    if os.path.isdir("output"):
-        for fn in sorted(os.listdir("output")):
+    if os.path.isdir(OUTPUT_DIR):
+        for fn in sorted(os.listdir(OUTPUT_DIR)):
             if fn.startswith("."): continue
             try:
-                with open(f"output/{fn}") as f:
+                with open(os.path.join(OUTPUT_DIR, fn)) as f:
                     c = f.read(1500)
                     if c.strip(): summary += f"\n=== {fn} ===\n{c}\n"
             except: pass
     prompt = (f"Target: {d.get('target','')}\nFindings:\n{summary[:8000]}\n\n"
               "Write a professional bug bounty report: Executive Summary, "
               "findings table (Vuln|Severity|URL|Impact), top 3 PoC curl commands, remediations.")
-    result, err = ollama_chat(prompt, d.get("model","mistral"), d.get("host","http://localhost:11434"))
+    result, err = ollama_chat(prompt, d.get("model", DEFAULT_OLLAMA_MODEL), d.get("host", DEFAULT_OLLAMA_HOST))
     return jsonify({"result": result or f"[Error] {err}"})
 
 @app.route("/api/agent/test", methods=["POST"])
 def api_agent_test():
     d = request.json
     result, err = ollama_chat("Reply exactly with: PentAI ONLINE",
-                              d.get("model","mistral"),
-                              d.get("host","http://localhost:11434"))
+                              d.get("model", DEFAULT_OLLAMA_MODEL),
+                              d.get("host", DEFAULT_OLLAMA_HOST))
     return jsonify({"ok":bool(result),"msg":result or err})
 
 @app.route("/api/outputs")
 def api_outputs():
     files = []
-    if os.path.isdir("output"):
-        for f in sorted(os.listdir("output")):
+    if os.path.isdir(OUTPUT_DIR):
+        for f in sorted(os.listdir(OUTPUT_DIR)):
             if f.startswith("."): continue
-            fp = os.path.join("output",f)
+            fp = os.path.join(OUTPUT_DIR,f)
             if os.path.isfile(fp):
                 files.append({"name":f,"size":os.path.getsize(fp),
                                "modified":datetime.fromtimestamp(
@@ -532,7 +549,7 @@ def api_outputs():
 
 @app.route("/api/read/<filename>")
 def api_read(filename):
-    fp = os.path.join("output", filename)
+    fp = os.path.join(OUTPUT_DIR, filename)
     if not os.path.exists(fp) or ".." in filename:
         return jsonify({"error":"not found"}),404
     with open(fp,"r",errors="replace") as fh:
@@ -550,11 +567,10 @@ def api_stats():
     return jsonify(stats)
 
 if __name__ == "__main__":
-    os.makedirs("output", exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     print("\n" + "="*52)
     print("  PentAI — Automating Pentesting and Hacking")
-    print("  http://localhost:5000")
-    print("  AI: Ollama")
+    print(f"  http://{APP_HOST}:{APP_PORT}")
+    print(f"  AI: {DEFAULT_OLLAMA_HOST}")
     print("="*52 + "\n")
-    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
-
+    app.run(host=APP_HOST, port=APP_PORT, debug=False, threaded=True)

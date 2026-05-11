@@ -160,32 +160,32 @@ const S = {
 // Each entry is { key, label, type:'toggle'|'number'|'select', default, values? }
 const TOOL_OPTS = {
   // subdomain
-  'subdomain:subfinder':  [{ key:'all', label:'All Sources', type:'toggle', default:true }],
-  'subdomain:puredns':    [{ key:'wildcard', label:'Wildcard Filter', type:'toggle', default:true }],
+  'subdomain:subfinder': [{ key: 'all', label: 'All Sources', type: 'toggle', default: true }],
+  'subdomain:puredns': [{ key: 'wildcard', label: 'Wildcard Filter', type: 'toggle', default: true }],
   // alive
-  'alive:httpx':          [{ key:'threads', label:'Threads', type:'select', default:'50', values:['10','25','50','100'] },
-                           { key:'tech', label:'Show Tech', type:'toggle', default:false }],
+  'alive:httpx': [{ key: 'threads', label: 'Threads', type: 'select', default: '50', values: ['10', '25', '50', '100'] },
+  { key: 'tech', label: 'Show Tech', type: 'toggle', default: false }],
   // url
-  'url:katana':           [{ key:'depth', label:'Depth', type:'select', default:'3', values:['2','3','4','5'] },
-                           { key:'js', label:'JS Crawl', type:'toggle', default:true }],
-  'url:gau':              [{ key:'threads', label:'Threads', type:'select', default:'20', values:['5','10','20','50'] }],
+  'url:katana': [{ key: 'depth', label: 'Depth', type: 'select', default: '3', values: ['2', '3', '4', '5'] },
+  { key: 'js', label: 'JS Crawl', type: 'toggle', default: true }],
+  'url:gau': [{ key: 'threads', label: 'Threads', type: 'select', default: '20', values: ['5', '10', '20', '50'] }],
   // dir
-  'dir:ffuf':             [{ key:'threads', label:'Threads', type:'select', default:'50', values:['25','50','100','150'] },
-                           { key:'ext', label:'+Extensions', type:'toggle', default:false }],
-  'dir:feroxbuster':      [{ key:'depth', label:'Depth', type:'select', default:'2', values:['1','2','3','4'] },
-                           { key:'silent', label:'Silent', type:'toggle', default:true }],
+  'dir:ffuf': [{ key: 'threads', label: 'Threads', type: 'select', default: '50', values: ['25', '50', '100', '150'] },
+  { key: 'ext', label: '+Extensions', type: 'toggle', default: false }],
+  'dir:feroxbuster': [{ key: 'depth', label: 'Depth', type: 'select', default: '2', values: ['1', '2', '3', '4'] },
+  { key: 'silent', label: 'Silent', type: 'toggle', default: true }],
   // ports
-  'ports:naabu':          [{ key:'rate', label:'Rate', type:'select', default:'1000', values:['500','1000','2000','5000'] },
-                           { key:'topports', label:'Top Ports', type:'select', default:'1000', values:['100','1000','65535'] }],
-  'ports:nmap':           [{ key:'timing', label:'Timing', type:'select', default:'T4', values:['T1','T2','T3','T4','T5'] },
-                           { key:'scripts', label:'Script Scan', type:'toggle', default:false }],
+  'ports:naabu': [{ key: 'rate', label: 'Rate', type: 'select', default: '1000', values: ['500', '1000', '2000', '5000'] },
+  { key: 'topports', label: 'Top Ports', type: 'select', default: '1000', values: ['100', '1000', '65535'] }],
+  'ports:nmap': [{ key: 'timing', label: 'Timing', type: 'select', default: 'T4', values: ['T1', 'T2', 'T3', 'T4', 'T5'] },
+  { key: 'scripts', label: 'Script Scan', type: 'toggle', default: false }],
   // vuln scanners
-  'nuclei:cves':          [{ key:'severity', label:'Severity', type:'select', default:'critical,high', values:['critical','critical,high','critical,high,medium'] }],
-  'nuclei:full-http':     [{ key:'rate', label:'Rate Limit', type:'select', default:'30', values:['10','30','60','100'] }],
-  'xss:dalfox':           [{ key:'silence', label:'Silent', type:'toggle', default:true },
-                           { key:'blind', label:'Blind XSS', type:'toggle', default:false }],
-  'sqli:sqlmap':          [{ key:'level', label:'Level', type:'select', default:'1', values:['1','2','3'] },
-                           { key:'risk', label:'Risk', type:'select', default:'1', values:['1','2','3'] }],
+  'nuclei:cves': [{ key: 'severity', label: 'Severity', type: 'select', default: 'critical,high', values: ['critical', 'critical,high', 'critical,high,medium'] }],
+  'nuclei:full-http': [{ key: 'rate', label: 'Rate Limit', type: 'select', default: '30', values: ['10', '30', '60', '100'] }],
+  'xss:dalfox': [{ key: 'silence', label: 'Silent', type: 'toggle', default: true },
+  { key: 'blind', label: 'Blind XSS', type: 'toggle', default: false }],
+  'sqli:sqlmap': [{ key: 'level', label: 'Level', type: 'select', default: '1', values: ['1', '2', '3'] },
+  { key: 'risk', label: 'Risk', type: 'select', default: '1', values: ['1', '2', '3'] }],
 };
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
