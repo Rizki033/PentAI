@@ -59,6 +59,7 @@ def ollama_models(host="http://localhost:11434"):
 
 def build_command(module, tool, target, options=None):
     t = target.strip() or "example.com"
+    o = options or {}
     os.makedirs("output", exist_ok=True)
 
     WL_DNS   = "/usr/share/wordlists/seclists/Discovery/DNS/bitquark-subdomains-top100000.txt"
@@ -66,6 +67,27 @@ def build_command(module, tool, target, options=None):
     WL_DIRS  = "/usr/share/wordlists/seclists/Discovery/Web-Content/raft-medium-directories.txt"
     WL_COM   = "/usr/share/wordlists/seclists/Discovery/Web-Content/common.txt"
     WL_PAR   = "/usr/share/wordlists/seclists/Discovery/Web-Content/burp-parameter-names.txt"
+
+    # ── Resolve options with safe defaults ─────────────────────────────────────
+    httpx_threads  = int(o.get('threads', 50))
+    httpx_tech     = '-tech-detect' if o.get('tech') else ''
+    katana_depth   = int(o.get('depth', 3))
+    katana_jc      = '-jc' if o.get('js', True) else ''
+    gau_threads    = int(o.get('threads', 20))
+    ffuf_threads   = int(o.get('threads', 50))
+    ffuf_ext       = '-e php,html,js,txt,json,bak,zip' if o.get('ext') else ''
+    ferox_depth    = int(o.get('depth', 2))
+    ferox_silent   = '--silent' if o.get('silent', True) else ''
+    naabu_rate     = int(o.get('rate', 1000))
+    naabu_ports    = o.get('topports', '1000')
+    nmap_timing    = o.get('timing', 'T4')
+    nmap_scripts   = '-sC' if o.get('scripts') else ''
+    nuclei_sev     = o.get('severity', 'critical,high')
+    nuclei_rate    = int(o.get('rate', 30))
+    dalfox_silence = '--silence' if o.get('silence', True) else ''
+    dalfox_blind   = '--blind https://your-xsshunter-url.com' if o.get('blind') else ''
+    sqlmap_level   = int(o.get('level', 1))
+    sqlmap_risk    = int(o.get('risk', 1))
 
     # Helper: wrap command with tool-exists + input-file checks
     def guard(cmd, tools=None, needs=None):
@@ -117,7 +139,7 @@ def build_command(module, tool, target, options=None):
 
       "alive": {
         "httpx":
-          guard(f"cat output/Subs.txt | httpx -silent -status-code -content-length -web-server -title -follow-redirects -threads 50 -o output/Alive.txt 2>/dev/null && echo '[+] Alive hosts:' && wc -l output/Alive.txt",
+          guard(f"cat output/Subs.txt | httpx -silent -status-code -content-length -web-server -title -follow-redirects -threads {httpx_threads} {httpx_tech} -o output/Alive.txt 2>/dev/null && echo '[+] Alive hosts:' && wc -l output/Alive.txt",
                 tools="httpx", needs="output/Subs.txt"),
         "httpx-200":
           guard(f"awk '{{print $1}}' output/Alive.txt | httpx -silent -match-code 200 -threads 30 -o output/Alive200.txt 2>/dev/null && echo '[+] 200-OK hosts:' && wc -l output/Alive200.txt",
@@ -133,10 +155,10 @@ def build_command(module, tool, target, options=None):
           guard(f"awk '{{print $1}}' output/Alive.txt | waybackurls 2>/dev/null | tee -a output/URLs_raw.txt && echo '[+] Wayback done'",
                 tools="waybackurls", needs="output/Alive.txt"),
         "gau":
-          guard(f"awk '{{print $1}}' output/Alive.txt | gau --threads 20 2>/dev/null | tee -a output/URLs_raw.txt && echo '[+] GAU done'",
+          guard(f"awk '{{print $1}}' output/Alive.txt | gau --threads {gau_threads} 2>/dev/null | tee -a output/URLs_raw.txt && echo '[+] GAU done'",
                 tools="gau", needs="output/Alive.txt"),
         "katana":
-          guard(f"awk '{{print $1}}' output/Alive.txt | katana -jc -d 3 -silent -f url 2>/dev/null | tee -a output/URLs_raw.txt && echo '[+] Katana done'",
+          guard(f"awk '{{print $1}}' output/Alive.txt | katana {katana_jc} -d {katana_depth} -silent -f url 2>/dev/null | tee -a output/URLs_raw.txt && echo '[+] Katana done'",
                 tools="katana", needs="output/Alive.txt"),
         "hakrawler":
           guard(f"awk '{{print $1}}' output/Alive.txt | hakrawler -subs -u -insecure 2>/dev/null | tee -a output/URLs_raw.txt && echo '[+] Hakrawler done'",
@@ -157,10 +179,10 @@ def build_command(module, tool, target, options=None):
 
       "dir": {
         "ffuf":
-          guard(f"[ -f {WL_DIRS} ] || {{ echo '[ERR] Wordlist missing — sudo apt install seclists'; exit 1; }} && while read url; do echo \"[*] Fuzzing $url\" && ffuf -u \"${{url}}/FUZZ\" -w {WL_DIRS} -t 50 -mc 200,301,302,403 -ac -silent 2>/dev/null | tee -a output/dirs_all.txt; done < output/Alive200.txt && echo '[+] Ffuf done'",
+          guard(f"[ -f {WL_DIRS} ] || {{ echo '[ERR] Wordlist missing — sudo apt install seclists'; exit 1; }} && while read url; do echo \"[*] Fuzzing $url\" && ffuf -u \"${{url}}/FUZZ\" -w {WL_DIRS} -t {ffuf_threads} {ffuf_ext} -mc 200,301,302,403 -ac -silent 2>/dev/null | tee -a output/dirs_all.txt; done < output/Alive200.txt && echo '[+] Ffuf done'",
                 tools="ffuf", needs="output/Alive200.txt"),
         "feroxbuster":
-          guard(f"[ -f {WL_DIRS} ] || {{ echo '[ERR] Wordlist missing — sudo apt install seclists'; exit 1; }} && while read url; do feroxbuster -u \"$url\" -w {WL_DIRS} -t 30 -k -d 2 -x php,html,json,js,txt,bak,zip --silent 2>/dev/null | tee -a output/dirs_all.txt; done < output/Alive200.txt",
+          guard(f"[ -f {WL_DIRS} ] || {{ echo '[ERR] Wordlist missing — sudo apt install seclists'; exit 1; }} && while read url; do feroxbuster -u \"$url\" -w {WL_DIRS} -t 30 -k -d {ferox_depth} -x php,html,json,js,txt,bak,zip {ferox_silent} 2>/dev/null | tee -a output/dirs_all.txt; done < output/Alive200.txt",
                 tools="feroxbuster", needs="output/Alive200.txt"),
         "dirsearch":
           guard(f"[ -f {WL_COM} ] || {{ echo '[ERR] Wordlist missing — sudo apt install seclists'; exit 1; }} && while read url; do dirsearch -u \"$url\" -e php,asp,aspx,jsp,json,xml,txt,log,bak,zip -i 200,301,302,403 --full-url -q 2>/dev/null | tee -a output/dirs_all.txt; done < output/Alive200.txt",
@@ -176,10 +198,10 @@ def build_command(module, tool, target, options=None):
 
       "ports": {
         "naabu":
-          guard(f"naabu -list output/Subs.txt -top-ports 1000 -silent -rate 1000 -o output/ports.txt 2>/dev/null && echo '[+] Open ports:' && wc -l output/ports.txt",
+          guard(f"naabu -list output/Subs.txt -top-ports {naabu_ports} -silent -rate {naabu_rate} -o output/ports.txt 2>/dev/null && echo '[+] Open ports:' && wc -l output/ports.txt",
                 tools="naabu", needs="output/Subs.txt"),
         "nmap":
-          guard(f"[ -f output/ports.txt ] || {{ echo '[ERR] Run naabu first to get ports.txt'; exit 1; }} && awk -F: '{{print $1}}' output/ports.txt | sort -u | head -20 | xargs -I@ nmap @ -T4 -Pn -sV --open -oN output/nmap_svc.txt 2>/dev/null && echo '[+] Nmap done' && cat output/nmap_svc.txt",
+          guard(f"[ -f output/ports.txt ] || {{ echo '[ERR] Run naabu first to get ports.txt'; exit 1; }} && awk -F: '{{print $1}}' output/ports.txt | sort -u | head -20 | xargs -I@ nmap @ -{nmap_timing} -Pn -sV {nmap_scripts} --open -oN output/nmap_svc.txt 2>/dev/null && echo '[+] Nmap done' && cat output/nmap_svc.txt",
                 tools="nmap"),
         "masscan":
           guard(f"masscan -iL output/Subs.txt -p 80,443,8080,8443,8888,3000,3306,5432,6379,27017 --rate=5000 -oL output/masscan.txt 2>/dev/null && echo '[+] Masscan done' && cat output/masscan.txt",
@@ -233,7 +255,7 @@ def build_command(module, tool, target, options=None):
           guard(f"cat output/xss_candidates.txt | kxss 2>/dev/null | tee output/xss_reflected.txt && echo '[+] Reflected XSS:' && wc -l output/xss_reflected.txt",
                 tools="kxss", needs="output/xss_candidates.txt"),
         "dalfox":
-          guard(f"cat output/xss_reflected.txt | dalfox pipe --silence --no-color 2>/dev/null | tee output/xss_vulns.txt && echo '[+] XSS confirmed:' && wc -l output/xss_vulns.txt",
+          guard(f"cat output/xss_reflected.txt | dalfox pipe {dalfox_silence} {dalfox_blind} --no-color 2>/dev/null | tee output/xss_vulns.txt && echo '[+] XSS confirmed:' && wc -l output/xss_vulns.txt",
                 tools="dalfox", needs="output/xss_reflected.txt"),
       },
 
@@ -249,7 +271,7 @@ def build_command(module, tool, target, options=None):
           guard(f"head -20 output/sqli_candidates.txt | while read url; do echo \"[*] Testing: $url\" && ghauri -u \"$url\" --dbs --batch --level 1 2>/dev/null | tee -a output/sqli_results.txt; done && echo '[+] Ghauri done'",
                 tools="ghauri", needs="output/sqli_candidates.txt"),
         "sqlmap":
-          guard(f"head -10 output/sqli_candidates.txt | while read url; do echo \"[*] Testing: $url\" && sqlmap -u \"$url\" --dbs --batch --random-agent --level 1 --risk 1 --threads 3 2>/dev/null | tee -a output/sqlmap_results.txt; done && echo '[+] Sqlmap done'",
+          guard(f"head -10 output/sqli_candidates.txt | while read url; do echo \"[*] Testing: $url\" && sqlmap -u \"$url\" --dbs --batch --random-agent --level {sqlmap_level} --risk {sqlmap_risk} --threads 3 2>/dev/null | tee -a output/sqlmap_results.txt; done && echo '[+] Sqlmap done'",
                 tools="sqlmap", needs="output/sqli_candidates.txt"),
       },
 
@@ -365,13 +387,13 @@ def build_command(module, tool, target, options=None):
           guard(f"nuclei -l output/Alive.txt -t exposures -silent 2>/dev/null | tee output/exposures.txt && echo '[+] Exposures done' && wc -l output/exposures.txt",
                 tools="nuclei", needs="output/Alive.txt"),
         "cves":
-          guard(f"nuclei -l output/Alive.txt -t cves -severity critical,high -silent 2>/dev/null | tee output/cves.txt && echo '[+] CVE scan done' && wc -l output/cves.txt",
+          guard(f"nuclei -l output/Alive.txt -t cves -severity {nuclei_sev} -silent 2>/dev/null | tee output/cves.txt && echo '[+] CVE scan done' && wc -l output/cves.txt",
                 tools="nuclei", needs="output/Alive.txt"),
         "misconfig":
           guard(f"nuclei -l output/Alive.txt -t misconfiguration -severity critical,high,medium -silent 2>/dev/null | tee output/misconfig.txt && echo '[+] Misconfig done' && wc -l output/misconfig.txt",
                 tools="nuclei", needs="output/Alive.txt"),
         "full-http":
-          guard(f"nuclei -l output/Alive.txt -t http -severity critical,high,medium -rate-limit 30 -silent 2>/dev/null | tee output/nuclei_all.txt && echo '[+] Full Nuclei done' && wc -l output/nuclei_all.txt",
+          guard(f"nuclei -l output/Alive.txt -t http -severity critical,high,medium -rate-limit {nuclei_rate} -silent 2>/dev/null | tee output/nuclei_all.txt && echo '[+] Full Nuclei done' && wc -l output/nuclei_all.txt",
                 tools="nuclei", needs="output/Alive.txt"),
       },
     }

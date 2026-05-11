@@ -46,6 +46,14 @@ html { font-size: 16px; scroll-behavior: smooth; }
   --r-md: 12px;
   --r-lg: 16px;
   --r-xl: 24px;
+
+  /* Short aliases used in JS inline styles */
+  --green:  var(--neon-green);
+  --red:    var(--neon-red);
+  --amber:  var(--neon-amber);
+  --purple: var(--neon-purple);
+  --accent: var(--neon-cyan);
+  --grad:   var(--grad-primary);
 }
 
 body {
@@ -224,6 +232,9 @@ body {
 .btn-glow { border-color: var(--neon-cyan); color: var(--neon-cyan); text-shadow: 0 0 8px var(--neon-cyan-glow); box-shadow: 0 0 10px var(--neon-cyan-dim); }
 .btn-glow:hover { background: var(--neon-cyan-dim); box-shadow: 0 0 20px var(--neon-cyan-glow); }
 
+.btn-ai { border-color: var(--neon-purple); color: var(--neon-purple); }
+.btn-ai:hover { background: var(--neon-purple-dim); box-shadow: 0 0 15px var(--neon-purple-glow); }
+
 .btn-glow-purple { border-color: var(--neon-purple); color: var(--neon-purple); box-shadow: 0 0 10px var(--neon-purple-dim); }
 .btn-glow-purple:hover { background: var(--neon-purple-dim); box-shadow: 0 0 20px var(--neon-purple-glow); }
 
@@ -331,8 +342,33 @@ body {
 .tc-avail.no { color: var(--neon-red); text-shadow: 0 0 8px var(--neon-red-glow); }
 
 /* ── OPTIONS ── */
-.opts-row { min-height: 24px; display: flex; align-items: center; margin-top: -4px; }
+.opts-row { min-height: 32px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: -4px; }
 .opts-hint { font-size: 11px; color: var(--text-dark); font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+
+/* Option toggle chips */
+.opt-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(0,0,0,0.4); border: 1px solid var(--border-glass-light);
+  color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  padding: 5px 12px; border-radius: 20px; cursor: pointer;
+  transition: all 0.25s ease; text-transform: uppercase;
+}
+.opt-chip::before { content: '○'; margin-right: 4px; font-size: 9px; }
+.opt-chip.on { background: var(--neon-cyan-dim); border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: 0 0 8px var(--neon-cyan-dim); }
+.opt-chip.on::before { content: '●'; color: var(--neon-cyan); }
+.opt-chip:hover { border-color: rgba(255,255,255,0.3); color: var(--text-main); }
+
+/* Option select dropdowns */
+.opt-select {
+  background: rgba(0,0,0,0.5); border: 1px solid var(--border-glass-light);
+  color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 600; padding: 5px 10px;
+  border-radius: 20px; cursor: pointer; outline: none;
+  transition: all 0.2s ease;
+}
+.opt-select:hover, .opt-select:focus { border-color: var(--neon-cyan); box-shadow: 0 0 8px var(--neon-cyan-dim); }
+.opt-select option { background: #0a0a12; color: var(--text-main); }
 
 /* ── CMD PREVIEW ── */
 .cmd-preview {
@@ -387,6 +423,7 @@ body {
 .o-text { flex: 1; color: var(--text-main); word-break: break-all; }
 .o-text strong { color: var(--neon-cyan); font-weight: bold; }
 .cursor { display: inline-block; width: 8px; height: 15px; background: var(--neon-cyan); box-shadow: 0 0 10px var(--neon-cyan); animation: blink 1s step-end infinite; vertical-align: middle; margin-left: 6px; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
 /* ── AI PANEL ── */
 .ai-panel {

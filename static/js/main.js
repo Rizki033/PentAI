@@ -156,6 +156,38 @@ const S = {
   model: 'mistral', host: 'http://localhost:11434', ollamaOk: false
 };
 
+// ── TOOL OPTIONS DEFINITIONS ──────────────────────────────────────────────────
+// Each entry is { key, label, type:'toggle'|'number'|'select', default, values? }
+const TOOL_OPTS = {
+  // subdomain
+  'subdomain:subfinder':  [{ key:'all', label:'All Sources', type:'toggle', default:true }],
+  'subdomain:puredns':    [{ key:'wildcard', label:'Wildcard Filter', type:'toggle', default:true }],
+  // alive
+  'alive:httpx':          [{ key:'threads', label:'Threads', type:'select', default:'50', values:['10','25','50','100'] },
+                           { key:'tech', label:'Show Tech', type:'toggle', default:false }],
+  // url
+  'url:katana':           [{ key:'depth', label:'Depth', type:'select', default:'3', values:['2','3','4','5'] },
+                           { key:'js', label:'JS Crawl', type:'toggle', default:true }],
+  'url:gau':              [{ key:'threads', label:'Threads', type:'select', default:'20', values:['5','10','20','50'] }],
+  // dir
+  'dir:ffuf':             [{ key:'threads', label:'Threads', type:'select', default:'50', values:['25','50','100','150'] },
+                           { key:'ext', label:'+Extensions', type:'toggle', default:false }],
+  'dir:feroxbuster':      [{ key:'depth', label:'Depth', type:'select', default:'2', values:['1','2','3','4'] },
+                           { key:'silent', label:'Silent', type:'toggle', default:true }],
+  // ports
+  'ports:naabu':          [{ key:'rate', label:'Rate', type:'select', default:'1000', values:['500','1000','2000','5000'] },
+                           { key:'topports', label:'Top Ports', type:'select', default:'1000', values:['100','1000','65535'] }],
+  'ports:nmap':           [{ key:'timing', label:'Timing', type:'select', default:'T4', values:['T1','T2','T3','T4','T5'] },
+                           { key:'scripts', label:'Script Scan', type:'toggle', default:false }],
+  // vuln scanners
+  'nuclei:cves':          [{ key:'severity', label:'Severity', type:'select', default:'critical,high', values:['critical','critical,high','critical,high,medium'] }],
+  'nuclei:full-http':     [{ key:'rate', label:'Rate Limit', type:'select', default:'30', values:['10','30','60','100'] }],
+  'xss:dalfox':           [{ key:'silence', label:'Silent', type:'toggle', default:true },
+                           { key:'blind', label:'Blind XSS', type:'toggle', default:false }],
+  'sqli:sqlmap':          [{ key:'level', label:'Level', type:'select', default:'1', values:['1','2','3'] },
+                           { key:'risk', label:'Risk', type:'select', default:'1', values:['1','2','3'] }],
+};
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.nav-item').forEach(el =>
@@ -168,6 +200,19 @@ document.addEventListener('DOMContentLoaded', () => {
   S.host = localStorage.getItem('ollama_host') || 'http://localhost:11434';
   document.getElementById('model-select').value = S.model;
   document.getElementById('ollama-host').value = S.host;
+
+  // ── Keyboard shortcuts ──────────────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    // Enter on target input → run scan
+    if (e.key === 'Enter' && document.activeElement === document.getElementById('target')) {
+      e.preventDefault(); runScan(); return;
+    }
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'l') { e.preventDefault(); clearOutput(); return; }   // Ctrl+L → clear
+      if (e.key === 'Enter') { e.preventDefault(); runScan(); return; }   // Ctrl+Enter → run
+    }
+    if (e.key === 'Escape' && S.running) stopScan();                       // Esc → stop
+  });
 
   fetchTools();
   renderTab();
@@ -305,6 +350,44 @@ function renderTab() {
   updatePreview();
 }
 
+// ── TOOL OPTIONS RENDERING ────────────────────────────────────────────────────
+function renderOpts(toolId) {
+  const key = `${S.tab}:${toolId}`;
+  const defs = TOOL_OPTS[key];
+  const row = document.getElementById('opts-row');
+  if (!defs || !defs.length) {
+    row.innerHTML = '<span class="opts-hint">// no extra options for this tool</span>';
+    return;
+  }
+  // Reset opts to defaults on tool change
+  defs.forEach(d => { if (S.opts[d.key] === undefined) S.opts[d.key] = d.default; });
+
+  row.innerHTML = '<span class="opts-hint" style="margin-right:10px">// options:</span>' +
+    defs.map(d => {
+      if (d.type === 'toggle') {
+        const on = S.opts[d.key];
+        return `<button class="opt-chip${on ? ' on' : ''}" onclick="toggleOpt('${d.key}')">${d.label}</button>`;
+      }
+      if (d.type === 'select') {
+        return `<select class="opt-select" onchange="setOpt('${d.key}',this.value)">
+          ${d.values.map(v => `<option value="${v}"${String(S.opts[d.key]) === String(v) ? ' selected' : ''}>${d.label}: ${v}</option>`).join('')}
+        </select>`;
+      }
+      return '';
+    }).join('');
+}
+
+function toggleOpt(key) {
+  S.opts[key] = !S.opts[key];
+  renderOpts(S.tool);
+  updatePreview();
+}
+
+function setOpt(key, val) {
+  S.opts[key] = val;
+  updatePreview();
+}
+
 function renderAgentTab() {
   document.getElementById('tool-grid').innerHTML = '';
   document.getElementById('opts-row').innerHTML = '';
@@ -342,8 +425,10 @@ function renderAgentTab() {
 
 function selectTool(id) {
   S.tool = id;
+  S.opts = {}; // reset opts on tool change so defaults apply fresh
   document.querySelectorAll('.tool-card').forEach(el =>
     el.classList.toggle('active', el.dataset.tool === id));
+  renderOpts(id);
   updatePreview();
 }
 
@@ -362,10 +447,32 @@ async function updatePreview() {
 // =========================================================================================
 // ************************* RUN ***********************************************************
 // =========================================================================================  
+// ── TARGET VALIDATION ─────────────────────────────────────────────────────────
+function validateTarget(t) {
+  if (!t || !t.trim()) return false;
+  // Accept domain, IP, CIDR, or URL
+  return /^(https?:\/\/)?[a-zA-Z0-9._\-]+(:[0-9]+)?(\/.*)?$|^[0-9]{1,3}(\.[0-9]{1,3}){3}(\/[0-9]{1,2})?$/.test(t.trim());
+}
+
 function runScan() {
   if (S.running) { stopScan(); return; }
   if (!S.tool) { addLine('warn', 'select a tool first'); return; }
-  const target = document.getElementById('target').value || 'example.com';
+  const targetEl = document.getElementById('target');
+  const target = targetEl.value.trim() || 'example.com';
+  // Visual feedback if target looks empty or like a placeholder
+  if (!target || target === 'example.com') {
+    targetEl.style.outline = '2px solid var(--neon-amber)';
+    addLine('warn', 'tip: set a real target — using example.com as placeholder');
+    setTimeout(() => targetEl.style.outline = '', 2000);
+  } else if (!validateTarget(target)) {
+    targetEl.style.outline = '2px solid var(--neon-red)';
+    addLine('err', `invalid target: "${target}" — expected domain, IP, or URL`);
+    setTimeout(() => targetEl.style.outline = '', 2500);
+    return;
+  } else {
+    targetEl.style.outline = '2px solid var(--neon-green)';
+    setTimeout(() => targetEl.style.outline = '', 1500);
+  }
   document.getElementById('output-area').innerHTML = '';
   S.running = true;
   const btn = document.getElementById('run-btn');
