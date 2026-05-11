@@ -9,7 +9,7 @@ PentAI is an AI-powered security automation platform for reconnaissance, vulnera
 
 [![Live Website](https://img.shields.io/badge/Live%20Demo-Open%20App-brightgreen?style=for-the-badge)](https://pent-ai-rizki.lovable.app/)
 
-![PentAI Terminal](assets/images/)
+![PentAI Terminal](assets/images/Terminal.png)
 ![PentAI Web](assets/images/web_1.png)
 
 ---
