@@ -153,7 +153,7 @@ const MODULES = {
 // ── STATE ─────────────────────────────────────────────────────────────────────
 const S = {
   tab: 'subdomain', tool: null, opts: {}, running: false, tools: {},
-  model: 'mistral', host: 'http://localhost:11434', ollamaOk: false
+  model: 'llama3.2', host: 'http://localhost:11434', ollamaOk: false
 };
 
 // ── TOOL OPTIONS DEFINITIONS ──────────────────────────────────────────────────
@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('target').addEventListener('input', updatePreview);
 
   // Restore saved settings
-  S.model = localStorage.getItem('ollama_model') || 'mistral';
+  S.model = localStorage.getItem('ollama_model') || 'llama3.2';
   S.host = localStorage.getItem('ollama_host') || 'http://localhost:11434';
   document.getElementById('model-select').value = S.model;
   document.getElementById('ollama-host').value = S.host;
@@ -273,18 +273,27 @@ async function checkOllama() {
     S.ollamaOk = d.running;
     const dot = document.getElementById('o-dot');
     const label = document.getElementById('o-label');
-    if (d.running) {
+    if (d.reachable && d.running) {
       dot.className = 'o-dot online';
       label.textContent = `OLLAMA · ${d.models.length} MODEL${d.models.length !== 1 ? 'S' : ''}`;
       label.style.color = 'var(--green)';
+    } else if (d.reachable && !d.running) {
+      // Ollama reachable but no models
+      dot.className = 'o-dot offline';
+      label.textContent = 'NO MODEL';
+      label.style.color = 'var(--amber)';
+      S.ollamaOk = false;
     } else {
       dot.className = 'o-dot offline';
       label.textContent = 'OLLAMA OFFLINE';
       label.style.color = 'var(--red)';
+      S.ollamaOk = false;
     }
   } catch (e) {
     document.getElementById('o-dot').className = 'o-dot offline';
     document.getElementById('o-label').textContent = 'OLLAMA OFFLINE';
+    document.getElementById('o-label').style.color = 'var(--red)';
+    S.ollamaOk = false;
   }
 }
 
@@ -536,16 +545,35 @@ function animateProgress() {
 }
 
 // ── OUTPUT ────────────────────────────────────────────────────────────────────
+const MAX_OUTPUT_LINES = 500;
+let scrollPending = false;
+
 function addLine(tag, text, ts) {
   const oa = document.getElementById('output-area');
   const ph = oa.querySelector('.output-placeholder'); if (ph) ph.remove();
+
+  // Optimization 1: Limit DOM nodes to prevent browser freeze
+  while (oa.children.length > MAX_OUTPUT_LINES) {
+    oa.removeChild(oa.firstChild);
+  }
+
   const t = ts || new Date().toTimeString().slice(0, 8);
   const div = document.createElement('div'); div.className = 'output-line';
   div.innerHTML = `<span class="o-ts">[${t}]</span><span class="o-tag ${tag}">${tag.toUpperCase()}</span><span class="o-text">${esc(text)}</span>`;
   oa.appendChild(div);
+
+  // Re-add cursor if it was removed by line limit
   let cur = oa.querySelector('.cursor');
   if (!cur) { cur = document.createElement('span'); cur.className = 'cursor'; oa.appendChild(cur); }
-  oa.scrollTop = oa.scrollHeight;
+
+  // Optimization 2: Throttle scroll updates to prevent Layout Thrashing
+  if (!scrollPending) {
+    scrollPending = true;
+    requestAnimationFrame(() => {
+      oa.scrollTop = oa.scrollHeight;
+      scrollPending = false;
+    });
+  }
 }
 
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -578,25 +606,76 @@ function aiLoading(msg = 'Ollama thinking...') {
 
 async function callAgent(endpoint, extra = {}) {
   if (!S.ollamaOk) {
-    setAI('<div style="color:var(--red);font-size:10px">WARNING: Ollama is offline.<br><br>Start it with:<br><code style="color:var(--accent)">ollama serve</code><br><br>Then pull a model:<br><code style="color:var(--accent)">ollama pull mistral</code></div>');
+    // Fetch detailed status to know WHY it's offline
+    let diagMsg = 'Cannot reach Ollama — run: <code>ollama serve</code>';
+    let outputMsg = 'Ollama offline — run in terminal: ollama serve';
+    try {
+      const s = await (await fetch(`/api/agent/status?host=${encodeURIComponent(S.host)}&model=${encodeURIComponent(S.model)}`)).json();
+      if (!s.ollama.reachable) {
+        diagMsg = `Cannot reach Ollama at <code>${esc(S.host)}</code><br><br>` +
+          `<strong>Fix:</strong> open a terminal and run:<br><code>ollama serve</code><br><br>` +
+          `Then pull a model:<br><code>ollama pull ${esc(S.model)}</code>`;
+        outputMsg = `Ollama offline at ${S.host} — run: ollama serve`;
+      } else if (s.ollama.reachable && !s.ollama.model_ok) {
+        diagMsg = `Ollama is running but model <code>${esc(S.model)}</code> is not installed.<br><br>` +
+          `<strong>Fix:</strong><br><code>ollama pull ${esc(S.model)}</code><br><br>` +
+          `Available models: <code>${s.ollama.models.join(', ') || 'none'}</code>`;
+        outputMsg = `Model '${S.model}' not found — run: ollama pull ${S.model}`;
+        S.ollamaOk = true; // Ollama IS running, just wrong model
+      }
+    } catch (_) { }
+    setAI(`<div style="color:var(--red);font-size:11px;line-height:1.9">
+      <div style="font-size:14px;margin-bottom:12px">⚠ AI OFFLINE</div>
+      ${diagMsg}
+      <br><br>
+      <button class="btn btn-outline" style="font-size:10px" onclick="checkOllama().then(()=>location.reload())">↻ RETRY</button>
+    </div>`);
+    addLine('err', outputMsg);
     return;
   }
   aiLoading();
   const target = document.getElementById('target').value || 'example.com';
   try {
-    const d = await (await fetch(endpoint, {
+    const resp = await fetch(endpoint, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: S.model, host: S.host, target, module: S.tab, ...extra })
-    })).json();
-    setAI('<pre style="white-space:pre-wrap;font-size:10px;line-height:1.85">' + esc(d.result || 'No result') + '</pre>');
+    });
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${txt.slice(0, 200)}`);
+    }
+    const d = await resp.json();
+    if (!d.result || d.result.startsWith('[Error]')) {
+      const errMsg = d.result || 'No result returned';
+      setAI(`<div style="color:var(--red);font-size:11px;line-height:1.9">
+        <div style="font-size:13px;margin-bottom:10px">⚠ AI ERROR</div>
+        <code>${esc(errMsg)}</code>
+        <br><br>
+        <button class="btn btn-outline" style="font-size:10px" onclick="checkOllama()">↻ CHECK OLLAMA</button>
+      </div>`);
+      addLine('err', 'AI error: ' + errMsg);
+    } else {
+      setAI('<pre style="white-space:pre-wrap;font-size:10px;line-height:1.85">' + esc(d.result) + '</pre>');
+      addLine('found', 'AI analysis complete — see AI panel →');
+    }
   } catch (e) {
-    setAI(`<div style="color:var(--red)">Error: ${esc(e.message)}</div>`);
+    setAI(`<div style="color:var(--red);font-size:11px">Network error: ${esc(e.message)}</div>`);
+    addLine('err', 'AI request failed: ' + e.message);
   }
 }
 
-function agentAnalyze() { callAgent('/api/agent/analyze'); }
-function agentPlan() { addLine('info', 'AI generating plan...'); callAgent('/api/agent/plan'); }
-function agentReport() { addLine('info', 'AI generating report...'); callAgent('/api/agent/report'); }
+function agentAnalyze() {
+  addLine('info', `AI analyzing — model: ${S.model} @ ${S.host}`);
+  callAgent('/api/agent/analyze');
+}
+function agentPlan() {
+  addLine('info', `AI generating recon plan — model: ${S.model}`);
+  callAgent('/api/agent/plan');
+}
+function agentReport() {
+  addLine('info', `AI generating bug bounty report — model: ${S.model}`);
+  callAgent('/api/agent/report');
+}
 
 // ── OUTPUTS MODAL ─────────────────────────────────────────────────────────────
 async function openOutputs() {
@@ -632,22 +711,57 @@ async function readFile(name) {
 }
 
 async function generateReport() {
-  if (!S.ollamaOk) { alert('Start Ollama first: ollama serve'); return; }
   const target = document.getElementById('target').value || 'example.com';
   const body = document.getElementById('modal-body');
-  body.innerHTML += '<div style="padding:1rem;color:var(--purple);font-family:\'JetBrains Mono\',monospace;font-size:11px">Generating AI report... (may take 30-60s)</div>';
+
+  // Check Ollama status with diagnostics
+  if (!S.ollamaOk) {
+    let hint = 'ollama serve';
+    try {
+      const s = await (await fetch(`/api/agent/status?host=${encodeURIComponent(S.host)}&model=${encodeURIComponent(S.model)}`)).json();
+      if (s.ollama.reachable && !s.ollama.model_ok)
+        hint = `ollama pull ${S.model}`;
+    } catch (_) { }
+    body.innerHTML += `<div style="padding:1rem;color:var(--red);font-family:'JetBrains Mono',monospace;font-size:11px">
+      ⚠ Ollama not ready — run in a terminal:<br><br>
+      <code style="color:var(--accent)">${esc(hint)}</code><br><br>
+      Then click AI REPORT again.
+    </div>`;
+    return;
+  }
+
+  // Show loading indicator
+  const loadDiv = document.createElement('div');
+  loadDiv.style.cssText = 'padding:1rem;color:var(--purple);font-family:\'JetBrains Mono\',monospace;font-size:11px';
+  loadDiv.textContent = `⏳ Generating AI report with ${S.model}... (may take 30-120s)`;
+  body.appendChild(loadDiv);
+
   try {
-    const d = await (await fetch('/api/agent/report', {
+    const resp = await fetch('/api/agent/report', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: S.model, host: S.host, target })
-    })).json();
-    const pre = document.createElement('div');
-    pre.className = 'file-content';
-    pre.style.borderColor = 'rgba(139,92,246,.3)'; pre.style.color = '#c4b5fd';
-    pre.textContent = d.result || 'No result';
-    body.appendChild(pre);
+    });
+    loadDiv.remove();
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const d = await resp.json();
+
+    if (!d.result || d.result.startsWith('[Error]')) {
+      const errDiv = document.createElement('div');
+      errDiv.style.cssText = 'padding:1rem;color:var(--red);font-family:\'JetBrains Mono\',monospace;font-size:11px';
+      errDiv.innerHTML = `⚠ AI Error: <code>${esc(d.result || 'No result')}</code>`;
+      body.appendChild(errDiv);
+    } else {
+      const pre = document.createElement('div');
+      pre.className = 'file-content';
+      pre.style.borderColor = 'rgba(139,92,246,.3)';
+      pre.style.color = '#c4b5fd';
+      pre.textContent = d.result;
+      body.appendChild(pre);
+    }
   } catch (e) {
-    body.innerHTML += `<div style="padding:.5rem 1rem;color:var(--red);font-size:11px">Error: ${esc(e.message)}</div>`;
+    loadDiv.remove();
+    body.innerHTML += `<div style="padding:.5rem 1rem;color:var(--red);font-size:11px">Network error: ${esc(e.message)}</div>`;
   }
 }
 
