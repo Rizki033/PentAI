@@ -29,6 +29,12 @@ The Ollama-powered AI panel can generate recon plans, analyze the latest scan, a
 
 ![PentAI AI Agent](assets/images/AI-Agent.png)
 
+### Autonomous Mode
+
+The autonomous workflow view is designed to chain the next logical scan step automatically from the current project state.
+
+![PentAI Autonomous Mode](assets/images/AUTONOMOUS%20MODE.png)
+
 ### AI Report View
 
 Generated reports are displayed directly in the dashboard so findings, severity, and PoC commands stay close to the raw output files.

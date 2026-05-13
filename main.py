@@ -12,7 +12,7 @@ DEFAULT_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 APP_HOST = os.getenv("HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("PORT", "5000"))
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="views", static_folder="public", static_url_path="/static")
 
 #=================================================================================
 # *************************** TOOLS **********************************************
