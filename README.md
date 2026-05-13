@@ -9,8 +9,38 @@ PentAI is an AI-powered security automation platform for reconnaissance, vulnera
 
 [![Live Website](https://img.shields.io/badge/Live%20Demo-Open%20App-brightgreen?style=for-the-badge)](https://pent-ai-rizki.lovable.app/)
 
+## Screenshots
+
+### Startup Terminal
+
+PentAI bootstraps the local Flask app, checks tooling, verifies Ollama, and prepares the output workspace.
+
 ![PentAI Terminal](assets/images/Terminal.png)
-![PentAI Web](assets/images/web_1.png)
+
+### Main Dashboard
+
+The main interface is organized around recon, exploitation, AI analysis, and output review from a single command center.
+
+![PentAI Dashboard](assets/images/Web_11.png)
+
+### Local AI Agent
+
+The Ollama-powered AI panel can generate recon plans, analyze the latest scan, and turn findings into a professional report.
+
+![PentAI AI Agent](assets/images/AI-Agent.png)
+
+### AI Report View
+
+Generated reports are displayed directly in the dashboard so findings, severity, and PoC commands stay close to the raw output files.
+
+![PentAI AI Report](assets/images/report.png)
+
+### Ollama Workflow
+
+The local AI flow includes a thinking state and a final results state inside the right-hand analysis panel.
+
+![PentAI Ollama Thinking](assets/images/ollama_thinking.png)
+![PentAI Ollama Result](assets/images/ollama_result.png)
 
 ---
 
@@ -169,6 +199,12 @@ The interface includes:
 - output browser
 - Ollama model selection and testing
 - scan statistics counters
+
+### Interface Preview
+
+![PentAI Dashboard Overview](assets/images/Web_11.png)
+![PentAI AI Agent Workspace](assets/images/AI-Agent.png)
+![PentAI Report Modal](assets/images/report.png)
 
 ---
 
