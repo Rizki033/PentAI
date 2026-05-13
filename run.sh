@@ -54,6 +54,7 @@ echo -e "${CYN}[~] Checking Ollama (local AI engine)...${NC}"
 if ! command -v ollama &>/dev/null; then
   echo -e "${YLW}[~] Ollama not found — installing now...${NC}"
   if curl -fsSL https://ollama.com/install.sh | sh 2>/dev/null; then
+    ollama pull llama3.2
     echo -e "${GRN}[✓] Ollama installed${NC}"
   else
     echo -e "${RED}[✗] Ollama auto-install failed${NC}"
@@ -93,14 +94,14 @@ if command -v ollama &>/dev/null; then
   echo -e "${CYN}[~] Checking AI models...${NC}"
   MODELS=$(ollama list 2>/dev/null | grep -v NAME | awk '{print $1}')
   if [ -z "$MODELS" ]; then
-    echo -e "${YLW}[~] No models found — downloading mistral (~4GB)...${NC}"
+    echo -e "${YLW}[~] No models found — downloading llama3.2 (~2GB)...${NC}"
     echo -e "${YLW}    This is a one-time download. After this, works completely offline.${NC}"
-    ollama pull mistral
+    ollama pull llama3.2
     if [ $? -eq 0 ]; then
-      echo -e "${GRN}[✓] Mistral ready — AI agent enabled${NC}"
+      echo -e "${GRN}[✓] Llama 3.2 ready — AI agent enabled${NC}"
     else
       echo -e "${RED}[!] Model download failed — check internet connection${NC}"
-      echo -e "${YLW}    Run manually: ollama pull mistral${NC}"
+      echo -e "${YLW}    Run manually: ollama pull llama3.2${NC}"
     fi
   else
     echo -e "${GRN}[✓] Models available:${NC}"
