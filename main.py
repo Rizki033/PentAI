@@ -8,7 +8,7 @@ os.chdir(BASE_DIR)
 
 OUTPUT_DIR = os.path.join(BASE_DIR, "output")
 DEFAULT_OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-DEFAULT_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
+DEFAULT_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 APP_HOST = os.getenv("HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("PORT", "5000"))
 
@@ -35,12 +35,9 @@ def check_tools():  return {t: tool_exists(t) for t in TOOLS_LIST}
 #============================================================================================
 
 
-AGENT_SYSTEM = """You are PentAI , an expert bug bounty AI agent. Your role:
-1. Analyze recon/scan output and find real vulnerabilities
-2. Rate severity: [CRITICAL] [HIGH] [MEDIUM] [LOW] [INFO]
-3. Suggest the top 3 next commands to run for maximum impact
-4. Write PoC curl commands for confirmed findings
-5. Be specific, technical, and actionable."""
+AGENT_SYSTEM = "You are a concise security AI. Analyze recon output, rate severity [CRITICAL/HIGH/MEDIUM/LOW], and suggest 3 commands. Be extremely brief."
+
+import socket
 
 def ollama_chat(prompt, model=DEFAULT_OLLAMA_MODEL, host=DEFAULT_OLLAMA_HOST):
     payload = json.dumps({"model":model,"stream":False,
@@ -49,10 +46,26 @@ def ollama_chat(prompt, model=DEFAULT_OLLAMA_MODEL, host=DEFAULT_OLLAMA_HOST):
     req = urllib.request.Request(f"{host}/api/chat", data=payload,
         headers={"Content-Type":"application/json"}, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=180) as r:
-            return json.loads(r.read().decode())["message"]["content"], None
-    except urllib.error.URLError as e:
-        return None, f"Ollama offline — run: ollama serve ({e})"
+        # Increased timeout to 600s for very slow CPUs
+        with urllib.request.urlopen(req, timeout=600) as r:
+            data = json.loads(r.read().decode())
+            if "message" in data and "content" in data["message"]:
+                return data["message"]["content"], None
+            elif "error" in data:
+                return None, f"Ollama error: {data['error']}"
+            else:
+                return None, f"Unexpected response: {data}"
+    except urllib.error.HTTPError as e:
+        body = ""
+        try: body = e.read().decode()[:200]
+        except: pass
+        if e.code == 404:
+            return None, f"Model '{model}' not found. Run: ollama pull {model}"
+        return None, f"Ollama HTTP {e.code}: {body}"
+    except (urllib.error.URLError, socket.timeout) as e:
+        if isinstance(e, socket.timeout) or (isinstance(e, urllib.error.URLError) and "timed out" in str(e).lower()):
+            return None, "Ollama timeout (600s) — Your system is very slow. Try model 'phi3' or 'tinyllama'."
+        return None, f"Cannot reach Ollama at {host}."
     except Exception as e:
         return None, str(e)
 
@@ -61,6 +74,20 @@ def ollama_models(host=DEFAULT_OLLAMA_HOST):
         with urllib.request.urlopen(f"{host}/api/tags", timeout=5) as r:
             return [m["name"] for m in json.loads(r.read().decode()).get("models",[])]
     except: return []
+
+def ollama_status(host=DEFAULT_OLLAMA_HOST):
+    """Return a diagnostic dict: reachable, models, default_model_ok"""
+    try:
+        with urllib.request.urlopen(f"{host}/api/tags", timeout=5) as r:
+            models = [m["name"] for m in json.loads(r.read().decode()).get("models",[])]
+            return {"reachable": True, "models": models,
+                    "model_ok": DEFAULT_OLLAMA_MODEL in models or
+                               any(DEFAULT_OLLAMA_MODEL.split(":")[0] in m for m in models)}
+    except urllib.error.URLError:
+        return {"reachable": False, "models": [], "model_ok": False,
+                "error": f"Cannot reach Ollama at {host}. Start with: ollama serve"}
+    except Exception as e:
+        return {"reachable": False, "models": [], "model_ok": False, "error": str(e)}
 
 #======================================================================================================
 # ******************************** COMMAND BUILDER ****************************************************
@@ -423,8 +450,29 @@ def api_tools(): return jsonify(check_tools())
 @app.route("/api/models")
 def api_models():
     host   = request.args.get("host", DEFAULT_OLLAMA_HOST)
-    models = ollama_models(host)
-    return jsonify({"models":models,"running":len(models)>0})
+    status = ollama_status(host)
+    return jsonify({
+        "models":  status["models"],
+        "running": status["reachable"] and len(status["models"]) > 0,
+        "reachable": status["reachable"],
+        "model_ok": status.get("model_ok", False),
+        "error":   status.get("error", None)
+    })
+
+@app.route("/api/agent/status")
+def api_agent_status():
+    host   = request.args.get("host", DEFAULT_OLLAMA_HOST)
+    model  = request.args.get("model", DEFAULT_OLLAMA_MODEL)
+    status = ollama_status(host)
+    output_files = []
+    if os.path.isdir(OUTPUT_DIR):
+        output_files = [f for f in os.listdir(OUTPUT_DIR) if not f.startswith(".")]
+    return jsonify({
+        "ollama": status,
+        "model":  model,
+        "output_files": len(output_files),
+        "last_scan_exists": os.path.exists(os.path.join(OUTPUT_DIR, ".last_scan.txt"))
+    })
 
 @app.route("/api/health")
 def api_health():
@@ -492,10 +540,9 @@ def api_agent_analyze():
                     with open(os.path.join(OUTPUT_DIR, fn)) as f:
                         scan_data += f"\n=== {fn} ===\n" + f.read(2000)
                 except: pass
-    prompt = (f"Target: {d.get('target','')}\nModule: {d.get('module','')}\n"
-              f"Scan output:\n{scan_data[-4000:]}\n\n"
-              "Analyze for vulnerabilities, rate severity [CRITICAL/HIGH/MEDIUM/LOW], "
-              "suggest 3 next commands.")
+    prompt = (f"Target: {d.get('target','')}\n"
+              f"Scan output:\n{scan_data[-2000:]}\n\n"
+              "Analyze vulnerabilities and suggest 3 next commands.")
     result, err = ollama_chat(prompt, d.get("model", DEFAULT_OLLAMA_MODEL), d.get("host", DEFAULT_OLLAMA_HOST))
     return jsonify({"result": result or f"[Error] {err}"})
 
@@ -520,7 +567,7 @@ def api_agent_report():
                     c = f.read(1500)
                     if c.strip(): summary += f"\n=== {fn} ===\n{c}\n"
             except: pass
-    prompt = (f"Target: {d.get('target','')}\nFindings:\n{summary[:8000]}\n\n"
+    prompt = (f"Target: {d.get('target','')}\nFindings:\n{summary[:4000]}\n\n"
               "Write a professional bug bounty report: Executive Summary, "
               "findings table (Vuln|Severity|URL|Impact), top 3 PoC curl commands, remediations.")
     result, err = ollama_chat(prompt, d.get("model", DEFAULT_OLLAMA_MODEL), d.get("host", DEFAULT_OLLAMA_HOST))
